@@ -39,25 +39,26 @@ emission_color = (
     random.uniform(0.0, 1),
 )
 
-subsurface = random.uniform(0, .4)
+subsurface = random.uniform(0, .2)
 subsurface_radius = (
-    0.6,
-    0.8,
-    0.8
+    10,
+    10,
+    10
 )
 material = bpy.data.materials.new("square-material")
 material.use_nodes = True
 nodes = material.node_tree.nodes
 bsdf = nodes.get("Principled BSDF")
-bsdf.inputs["Subsurface"].default_value = subsurface
-bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
+bsdf.inputs["Metallic"].default_value = random.uniform(0, 100)
+# bsdf.inputs["Subsurface"].default_value = subsurface
+# bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
 
 highlighted_materials = bpy.data.materials.new("square-material")
 highlighted_materials.use_nodes = True
 nodes = highlighted_materials.node_tree.nodes
 bsdf = nodes.get("Principled BSDF")
-bsdf.inputs["Subsurface"].default_value = subsurface
-bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
+# bsdf.inputs["Subsurface"].default_value = subsurface
+# bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
 bsdf.inputs["Emission Strength"].default_value = random.uniform(0, 0.4)
 bsdf.inputs["Emission"].default_value = (
     1,
@@ -89,7 +90,7 @@ bpy.context.scene.world = world
 
 # light stuff
 front_light = bpy.data.lights.new(name="light-front", type='POINT')
-front_light.energy = random.uniform(300, 500)
+front_light.energy = random.uniform(100, 300)
 front_light.color = (
     random.uniform(0, 30),
     random.uniform(0, 30),
@@ -107,7 +108,7 @@ front_light_object.location = (
 )
 
 back_light = bpy.data.lights.new(name="light-back", type='POINT')
-back_light.energy = random.uniform(100, 400)
+back_light.energy = random.uniform(50, 200)
 back_light.color = (
     random.uniform(0, 30),
     random.uniform(0, 30),
@@ -153,13 +154,20 @@ scene.camera.location.z = tz
 
 bpy.ops.wm.save_as_mainfile(filepath="output.blend")
 
+scene.render.resolution_x = 16 * 100
+scene.render.resolution_y = 9 * 100
+scene.render.resolution_percentage = 200
+
 bpy.context.scene.render.filepath = os.path.join(
     os.curdir,
-    'untitled.png'
+    'untitled-cycles.png'
 )
 bpy.context.scene.render.engine = 'CYCLES'
+bpy.ops.render.render(write_still=True)
 
-scene.render.resolution_x = 16 * 20
-scene.render.resolution_y = 9 * 20
-scene.render.resolution_percentage = 100
+bpy.context.scene.render.filepath = os.path.join(
+    os.curdir,
+    'untitled-eevee.png'
+)
+bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 bpy.ops.render.render(write_still=True)
