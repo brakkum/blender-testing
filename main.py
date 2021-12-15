@@ -1,5 +1,6 @@
-import math
 import random
+import math
+import time
 import bpy
 import os
 
@@ -204,13 +205,15 @@ scene.camera.location.z = tz
 
 scene.render.resolution_x = 16 * 100
 scene.render.resolution_y = 9 * 100
-scene.render.resolution_percentage = 40
+scene.render.resolution_percentage = 50
+
+timestamp = time.time()
 
 bpy.context.scene.render.filepath = os.path.join(
     os.curdir,
-    'untitled-cycles.png'
+    f'untitled-{timestamp}.png'
 )
 bpy.context.scene.render.engine = 'CYCLES'
 bpy.ops.render.render(write_still=True)
 
-bpy.ops.wm.save_as_mainfile(filepath="output.blend")
+bpy.ops.wm.save_as_mainfile(filepath=f"output-{timestamp}.blend")
