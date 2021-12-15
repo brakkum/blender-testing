@@ -12,25 +12,59 @@ bpy.ops.object.delete()
 
 rows = 20
 cols = 30
+# rows = 5
+# cols = 5
 depth = 1
 
-for y in range(depth):
-    for i in range(rows * cols):
-        bpy.ops.mesh.primitive_cube_add(
-            # size=random.uniform(0.2, 0.9),
-            size=1.0 - y * .3,
-            enter_editmode=False,
-            align='WORLD',
-            location=((i % cols) * 2, y * 2, (i // cols) * 2),
-            # rotation=(random.random(), random.random(), random.random()),
-            scale=(1, 1, 1)
-        )
+glass_squares = bpy.data.collections.new('GlassSquares')
+light_squares = bpy.data.collections.new('LightSquares')
 
-for obj in bpy.context.scene.objects:
-    if obj.type == 'MESH':
-        obj.select_set(True)
-    else:
-        obj.select_set(False)
+bpy.context.scene.collection.children.link(glass_squares)
+bpy.context.scene.collection.children.link(light_squares)
+
+bpy.ops.mesh.primitive_cube_add(
+    # size=random.uniform(0.2, 0.9),
+    size=1.0,
+    enter_editmode=False,
+    align='WORLD',
+    location=(0, 0, 0),
+    # rotation=(random.random(), random.random(), random.random()),
+    scale=(1, 1, 1)
+)
+glass_x_array = bpy.context.active_object.modifiers.new(name='glass-x-array', type='ARRAY')
+glass_x_array.count = cols
+glass_x_array.relative_offset_displace[0] = 2
+glass_x_array.relative_offset_displace[1] = 0
+glass_x_array.relative_offset_displace[2] = 0
+glass_z_array = bpy.context.active_object.modifiers.new(name='glass-z-array', type='ARRAY')
+glass_z_array.count = rows
+glass_z_array.relative_offset_displace[0] = 0
+glass_z_array.relative_offset_displace[1] = 0
+glass_z_array.relative_offset_displace[2] = 2
+glass_squares.objects.link(bpy.context.active_object)
+
+bpy.ops.mesh.primitive_cube_add(
+    # size=random.uniform(0.2, 0.9),
+    size=0.2,
+    enter_editmode=False,
+    align='WORLD',
+    location=(0, 0, 0),
+    # rotation=(random.random(), random.random(), random.random()),
+    scale=(1, 1, 1)
+)
+light_x_array = bpy.context.active_object.modifiers.new(name='light-x-array', type='ARRAY')
+light_x_array.count = cols
+light_x_array.relative_offset_displace[0] = 10
+light_x_array.relative_offset_displace[1] = 0
+light_x_array.relative_offset_displace[2] = 0
+light_z_array = bpy.context.active_object.modifiers.new(name='light-z-array', type='ARRAY')
+light_z_array.count = rows
+light_z_array.relative_offset_displace[0] = 0
+light_z_array.relative_offset_displace[1] = 0
+light_z_array.relative_offset_displace[2] = 10
+light_squares.objects.link(bpy.context.active_object)
+
+bpy.ops.object.select_all(action='DESELECT')
 
 emission_color = (
     random.uniform(0.0, 1),
@@ -45,44 +79,60 @@ subsurface_radius = (
     10,
     10
 )
-material = bpy.data.materials.new("square-material")
-material.use_nodes = True
-nodes = material.node_tree.nodes
-bsdf = nodes.get("Principled BSDF")
-bsdf.inputs["Metallic"].default_value = random.uniform(0, 100)
-# bsdf.inputs["Subsurface"].default_value = subsurface
-# bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
+glass_material = bpy.data.materials.new("glass-material")
+glass_material.use_nodes = True
+for node in glass_material.node_tree.nodes:
+    glass_material.node_tree.nodes.remove(node)
+glass_bsdf = glass_material.node_tree.nodes.new('ShaderNodeBsdfGlass')
+glass_bsdf.inputs["Roughness"].default_value = random.uniform(0, 0.2)
+glass_bsdf.inputs["IOR"].default_value = random.uniform(0, 20)
+glass_bsdf.distribution = 'MULTI_GGX'
+glass_out = glass_material.node_tree.nodes.new('ShaderNodeOutputMaterial')
+glass_material.node_tree.links.new(glass_bsdf.outputs['BSDF'], glass_out.inputs['Surface'])
 
-highlighted_materials = bpy.data.materials.new("square-material")
-highlighted_materials.use_nodes = True
-nodes = highlighted_materials.node_tree.nodes
-bsdf = nodes.get("Principled BSDF")
-# bsdf.inputs["Subsurface"].default_value = subsurface
-# bsdf.inputs["Subsurface Radius"].default_value = subsurface_radius
-bsdf.inputs["Emission Strength"].default_value = random.uniform(0, 0.4)
-bsdf.inputs["Emission"].default_value = (
-    1,
-    1,
-    1,
-    1
+for obj in glass_squares.objects:
+    obj.data.materials.append(glass_material)
+
+light_material = bpy.data.materials.new("light-material")
+light_material.use_nodes = True
+for node in light_material.node_tree.nodes:
+    light_material.node_tree.nodes.remove(node)
+emission = light_material.node_tree.nodes.new('ShaderNodeEmission')
+emission.inputs["Strength"].default_value = random.uniform(0, 200)
+emission.inputs["Color"].default_value = (
+    random.uniform(0.5, 1),
+    random.uniform(0.5, 1),
+    random.uniform(0.5, 1),
+    random.uniform(0.5, 1)
 )
+light_out = light_material.node_tree.nodes.new('ShaderNodeOutputMaterial')
+light_material.node_tree.links.new(emission.outputs['Emission'], light_out.inputs['Surface'])
 
-for obj in bpy.context.selected_objects:
-    obj.data.materials.append(highlighted_materials if random.random() >= 0.8 else material)
+
+for obj in light_squares.objects:
+    obj.data.materials.append(light_material)
 
 # world stuff
 world = bpy.data.worlds.new("scene-world")
+world.use_nodes = True
+for node in world.node_tree.nodes:
+    world.node_tree.nodes.remove(node)
+world_out = world.node_tree.nodes.new('ShaderNodeOutputWorld')
+sky = world.node_tree.nodes.new('ShaderNodeTexSky')
+sky.sky_type = 'NISHITA'
+sky.sun_disc = False
+sky.sun_elevation = random.uniform(0, .6)
+sky.sun_rotation = random.uniform(0, 4)
+sky.air_density = random.uniform(0, 10)
+sky.dust_density = random.uniform(0, 10)
+sky.ozone_density = random.uniform(0, 10)
+world.node_tree.links.new(sky.outputs['Color'], world_out.inputs['Surface'])
 
 world.color = (
     random.uniform(0.0, 0.2),
     random.uniform(0.0, 0.2),
     random.uniform(0.0, 0.2)
 )
-# world.mist_settings.use_mist = True
-# world.mist_settings.start = 1
-# world.mist_settings.depth = 2
-# world.mist_settings.falloff = 'LINEAR'
-# world.mist_settings.intensity = 0.99
 
 bpy.context.scene.world = world
 # end world stuff
@@ -152,11 +202,9 @@ scene.camera.location.y = ty
 scene.camera.location.z = tz
 # end camera stuff
 
-bpy.ops.wm.save_as_mainfile(filepath="output.blend")
-
 scene.render.resolution_x = 16 * 100
 scene.render.resolution_y = 9 * 100
-scene.render.resolution_percentage = 200
+scene.render.resolution_percentage = 40
 
 bpy.context.scene.render.filepath = os.path.join(
     os.curdir,
@@ -165,9 +213,4 @@ bpy.context.scene.render.filepath = os.path.join(
 bpy.context.scene.render.engine = 'CYCLES'
 bpy.ops.render.render(write_still=True)
 
-bpy.context.scene.render.filepath = os.path.join(
-    os.curdir,
-    'untitled-eevee.png'
-)
-bpy.context.scene.render.engine = 'BLENDER_EEVEE'
-bpy.ops.render.render(write_still=True)
+bpy.ops.wm.save_as_mainfile(filepath="output.blend")
