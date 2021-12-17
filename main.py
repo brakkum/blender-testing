@@ -4,6 +4,10 @@ import time
 import bpy
 import os
 
+# make output dit
+if not os.path.exists('output') or not os.path.isdir('output'):
+    os.mkdir('output')
+
 # select all stuff
 for obj in bpy.context.scene.objects:
     obj.select_set(True)
@@ -205,15 +209,15 @@ scene.camera.location.z = tz
 
 scene.render.resolution_x = 16 * 100
 scene.render.resolution_y = 9 * 100
-scene.render.resolution_percentage = 50
+scene.render.resolution_percentage = 10
 
 timestamp = time.time()
 
 bpy.context.scene.render.filepath = os.path.join(
-    os.curdir,
+    os.path.join(os.curdir, 'output'),
     f'untitled-{timestamp}.png'
 )
 bpy.context.scene.render.engine = 'CYCLES'
 bpy.ops.render.render(write_still=True)
 
-bpy.ops.wm.save_as_mainfile(filepath=f"output-{timestamp}.blend")
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.curdir, 'output', f"output-{timestamp}.blend"))
